@@ -1,0 +1,10 @@
+# Responsabili globali
+* @carlastefy @mykychan
+
+# Aree condivise e architettura
+/backend/src/main/java/it/unisa/outly/model/ @carlastefy @mykychan
+/docs/modelli/ @carlastefy @mykychan
+
+# Protezione configurazione agenti e pipeline
+/AGENTS.md @carlastefy @mykychan
+/.github/ @carlastefy @mykychan

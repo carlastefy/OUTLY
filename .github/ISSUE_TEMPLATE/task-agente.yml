@@ -1,0 +1,45 @@
+name: Task per agente (Caso d'uso)
+description: Implementazione di un caso d'uso di Outly guidata dai modelli
+title: "UC_XX: "
+labels: ["task-agente"]
+body:
+  - type: input
+    id: uc
+    attributes:
+      label: Caso d'uso
+      placeholder: "es. UC_03 CreaAttivita"
+    validations:
+      required: true
+  - type: dropdown
+    id: componente
+    attributes:
+      label: Componente coinvolto
+      options:
+        - Backend (Spring Boot)
+        - Client (Android)
+        - Entrambi (Full-stack)
+    validations:
+      required: true
+  - type: textarea
+    id: specifica
+    attributes:
+      label: Specifica (file da leggere)
+      description: Elenca solo i file strettamente necessari per questo task.
+      value: |
+        - docs/rad/uc/UCXX_Nome.md
+        - docs/modelli/seq_nome.puml
+        - docs/modelli/class.puml
+    validations:
+      required: true
+  - type: textarea
+    id: ambito
+    attributes:
+      label: Ambito (classi e metodi da toccare)
+      placeholder: "es. AttivitaControl.creaAttivita(...), AttivitaRepository"
+    validations:
+      required: true
+  - type: textarea
+    id: verifica
+    attributes:
+      label: Test frame da coprire
+      placeholder: "es. TF01-TF08 in docs/test/cp_crea_attivita.md"
