@@ -30,7 +30,7 @@ activate p3
 ||1||
 deactivate p2
 ' cell=nzaMuV3CJE9FYRndx9zX-8; absolute_y=450.000000
-p0 -> p3 : 3: InsermentoDati(Nome,Cognome,Ntelefono,Mail,Password)
+p0 -> p3 : 3: InserimentoDati(Nome,Cognome,Ntelefono,Mail,Password)
 ' cell=nzaMuV3CJE9FYRndx9zX-66; absolute_y=470.000000
 p0 -> p3 : 4: submit()
 ||1||
