@@ -1,10 +1,27 @@
+
 # Responsabili globali
 * @carlastefy @mykychan
 
-# Aree condivise e architettura
-/backend/src/main/java/it/unisa/outly/model/ @carlastefy @mykychan
-/docs/modelli/ @carlastefy @mykychan
+# Frontend Android
+/android/ @sdeluca46 @nom252
+
+# Backend Spring Boot
+/backend/ @KeresaeI @d-ionel
+
+# Database
+/backend/src/main/resources/ @Lucilla-star
+
+# Modelli e architettura
+/backend/src/main/java/it/unisa/outly/model/ @KeresaeI
+/docs/models/plantuml/ @KeresaeI
+
+# Documentazione
+/docs/rad/ @sdeluca46 @nom252 @Lucilla-star @KeresaeI @d-ionel
+/docs/sdd/ @sdeluca46 @nom252 @Lucilla-star @KeresaeI @d-ionel
+/docs/models/ @sdeluca46 @nom252 @Lucilla-star @KeresaeI @d-ionel
+/docs/tests/ @sdeluca46 @nom252 @Lucilla-star @KeresaeI @d-ionel
 
 # Protezione configurazione agenti e pipeline
 /AGENTS.md @carlastefy @mykychan
 /.github/ @carlastefy @mykychan
+
