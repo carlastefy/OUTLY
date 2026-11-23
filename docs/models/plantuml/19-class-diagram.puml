@@ -1,0 +1,100 @@
+@startuml
+' Generated from source/pages/19-class-diagram.xml
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam componentStyle uml2
+hide empty members
+class "Cliente" as n1 {
+  {field} GradoAffidabilita
+  {field} Interessi
+  {field} PreferenzeSocialita
+  {field} CaratteristicheAccessibilita
+}
+class "Organizzatore" as n2 {
+  {field} PartitaIVA
+  {field} IdAbilitazione
+  {field} NomeEsercizio
+  {field} TipologiaEsercizio
+  {field} IndirizzoEsercizio
+  {field} DescrizioneEsercizio
+  {field} DocumentoGestioneEsercizio
+}
+class "Amministratore" as n3 {
+}
+class "Attività" as n4 {
+  {field} IdAttivita {id}
+  {field} Titolo
+  {field} Foto
+  {field} Descrizione
+  {field} Data
+  {field} Ora
+  {field} Luogo
+  {field} Costo
+  {field} Durata
+  {field} PreferenzeSocialita
+  {field} CaratteristicheAccessibilita
+  {field} TipologiaAttivita
+  {field} DifficoltaTecnica
+  {field} DifficoltaFisica
+  {field} NumeroMassimoPartecipanti
+  {field} /NumeroPrenotazioni
+}
+class "Prenotazione" as n5 {
+  {field} IdPrenotazione {id}
+  {field} DataOraPrenotazione
+  {field} Stato
+}
+class "RichiestaOrganizzatore" as n6 {
+  {field} IdRichiestaOrganizzatore {id}
+  {field} NomeEsercizio
+  {field} TipologiaEsercizio
+  {field} Indirizzo
+  {field} PartitaIVA
+  {field} DescrizioneEsercizio
+  {field} Documento
+  {field} Stato
+}
+class "Segnalazione" as n7 {
+  {field} IdSegnalazione {id}
+  {field} Descrizione
+  {field} Stato
+}
+class "GruppoTemporaneo" as n8 {
+  {field} IdGruppoTemporaneo {id}
+}
+abstract class "UtenteRegistrato" as n9 {
+  {field} Nome
+  {field} Cognome
+  {field} E-mail {id}
+  {field} Password
+  {field} Numero telefono
+}
+' cell rELhZfODKe2u5sYuGXUd-88
+n1 <|-- n2
+' cell rELhZfODKe2u5sYuGXUd-89
+n2 "1" -- "0..*" n4 : gestisce
+' cell rELhZfODKe2u5sYuGXUd-92
+n1 "1" -- "0..*" n5 : effettua
+' cell rELhZfODKe2u5sYuGXUd-95
+n4 "1" -- "0..*" n5 : riceve
+' cell rELhZfODKe2u5sYuGXUd-98
+n1 "1" -- "0..*" n6 : presenta
+' cell rELhZfODKe2u5sYuGXUd-101
+n3 "0..1" -- "0..*" n6 : verifica
+' cell rELhZfODKe2u5sYuGXUd-104
+n1 "1" -- "0..*" n7 : inviata
+' cell rELhZfODKe2u5sYuGXUd-107
+n1 "1" -- "0..*" n7 : è oggetto di
+' cell rELhZfODKe2u5sYuGXUd-113
+n3 "0..1" -- "0..*" n7 : ricevuta
+' cell rELhZfODKe2u5sYuGXUd-116
+n4 -- n8 : prevede
+' cell rELhZfODKe2u5sYuGXUd-117
+n8 -- n1 : raggruppa
+' cell generalizza_standard
+n1 --|> n9
+' cell generalizza_admin
+n3 --|> n9
+' cell richiesta_abilita_organizzatore
+n6 --> n2 : abilita
+@enduml

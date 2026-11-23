@@ -1,0 +1,35 @@
+@startuml
+' Generated from immutable native XML by convert_usecases.py.
+' Original IDs, endpoints and inference evidence are in reviews/usecases.json.
+left to right direction
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #181818
+skinparam actorBackgroundColor white
+skinparam usecaseBackgroundColor #30A8BC
+skinparam usecaseBorderColor #181818
+skinparam rectangleBackgroundColor white
+skinparam rectangleBorderColor #181818
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+
+' cell: client
+actor "Cliente registrato" as n6
+' cell: organizer
+actor "Organizzatore" as n8
+' boundary cell: system
+rectangle " " as n2 {
+  ' cell: RF_GP_01
+  usecase "Prenotazione attività" as n3
+  ' cell: RF_GP_02
+  usecase "Annullamento\nprenotazione" as n4
+  ' cell: RF_GP_03
+  usecase "Visualizzazione prenotati" as n5
+}
+' edge cell: association-RF_GP_01
+n6 -- n3
+' edge cell: association-RF_GP_02
+n6 -- n4
+' edge cell: association-RF_GP_03
+n8 -- n5
+@enduml

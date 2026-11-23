@@ -1,0 +1,33 @@
+@startuml
+' Generated from immutable native XML by convert_usecases.py.
+' Original IDs, endpoints and inference evidence are in reviews/usecases.json.
+left to right direction
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #181818
+skinparam actorBackgroundColor white
+skinparam usecaseBackgroundColor #30A8BC
+skinparam usecaseBorderColor #181818
+skinparam rectangleBackgroundColor white
+skinparam rectangleBorderColor #181818
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+
+' cell: jivK-rij8e-07juTH7z--1
+actor "Organizzatore" as n2
+' boundary cell: jivK-rij8e-07juTH7z--2
+rectangle " " as n3 {
+  ' cell: jivK-rij8e-07juTH7z--3
+  usecase "Recupero delle informazioni fallito" as n4
+  ' cell: jivK-rij8e-07juTH7z--4
+  usecase "Nessuna Prenotazione presente" as n5
+  ' cell: jivK-rij8e-07juTH7z--5
+  usecase "Visualizzazione Prenotati" as n6
+}
+' edge cell: jivK-rij8e-07juTH7z--6
+n6 <-- n4 : <<extend>>
+' edge cell: jivK-rij8e-07juTH7z--8
+n6 <-- n5 : <<extend>>
+' edge cell: jivK-rij8e-07juTH7z--10
+n6 -- n2
+@enduml

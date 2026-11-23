@@ -1,0 +1,61 @@
+@startuml
+' Generated from immutable native XML by convert_usecases.py.
+' Original IDs, endpoints and inference evidence are in reviews/usecases.json.
+left to right direction
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #181818
+skinparam actorBackgroundColor white
+skinparam usecaseBackgroundColor #30A8BC
+skinparam usecaseBorderColor #181818
+skinparam rectangleBackgroundColor white
+skinparam rectangleBorderColor #181818
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+
+' cell: DdbljQnWq_ITYsya9IRs-1
+actor "Cliente non registrato" as n2
+' cell: DdbljQnWq_ITYsya9IRs-2
+actor "Cliente registrato" as n3
+' cell: A9KhH6yyzJRRhroMi1qL-2
+actor "Utente Registrato" as n22
+' boundary cell: DdbljQnWq_ITYsya9IRs-4
+rectangle " " as n4 {
+  ' cell: DdbljQnWq_ITYsya9IRs-13
+  usecase "Logout" as n5
+  ' cell: DdbljQnWq_ITYsya9IRs-14
+  usecase "Eliminazione\naccount" as n6
+  ' cell: MtUwox8opQeXP0DEn82R-3
+  usecase "Login" as n7
+  ' cell: DdbljQnWq_ITYsya9IRs-12
+  usecase "Registrazione" as n8
+  ' cell: DdbljQnWq_ITYsya9IRs-15
+  usecase "Visualizzazione area Cliente" as n9
+  ' cell: DdbljQnWq_ITYsya9IRs-16
+  usecase "Modifica area Cliente" as n10
+  ' cell: DdbljQnWq_ITYsya9IRs-17
+  usecase "Richiesta Riconoscimento Organizzatore" as n11
+  ' cell: DdbljQnWq_ITYsya9IRs-18
+  usecase "Segnalazione Cliente" as n12
+  ' cell: A9KhH6yyzJRRhroMi1qL-3
+  usecase "Visualizzazione del grado di affidabilità" as n13
+}
+' edge cell: sQSCKRbfADowLYcDSKAw-7
+n2 -- n8
+' edge cell: sQSCKRbfADowLYcDSKAw-9
+n22 -- n5
+' edge cell: sQSCKRbfADowLYcDSKAw-10
+n6 -- n3
+' edge cell: sQSCKRbfADowLYcDSKAw-11
+n3 -- n9
+' edge cell: sQSCKRbfADowLYcDSKAw-12
+n3 -- n10
+' edge cell: sQSCKRbfADowLYcDSKAw-13
+n3 -- n11
+' edge cell: sQSCKRbfADowLYcDSKAw-14
+n3 -- n12
+' edge cell: MtUwox8opQeXP0DEn82R-2
+n22 -- n7
+' edge cell: A9KhH6yyzJRRhroMi1qL-4
+n3 -- n13
+@enduml

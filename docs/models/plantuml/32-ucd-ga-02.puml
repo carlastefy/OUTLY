@@ -1,0 +1,37 @@
+@startuml
+' Generated from immutable native XML by convert_usecases.py.
+' Original IDs, endpoints and inference evidence are in reviews/usecases.json.
+left to right direction
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #181818
+skinparam actorBackgroundColor white
+skinparam usecaseBackgroundColor #30A8BC
+skinparam usecaseBorderColor #181818
+skinparam rectangleBackgroundColor white
+skinparam rectangleBorderColor #181818
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+
+' cell: fvlWKa_OQbtLhFLN5xGI-1
+actor "Organizzatore" as n2
+' boundary cell: fvlWKa_OQbtLhFLN5xGI-3
+rectangle " " as n3 {
+  ' cell: fvlWKa_OQbtLhFLN5xGI-5
+  usecase "Modifica Attività" as n5
+  ' cell: fvlWKa_OQbtLhFLN5xGI-8
+  usecase "Dati Mancanti" as n10
+  ' cell: fvlWKa_OQbtLhFLN5xGI-9
+  usecase "Dati non Validi" as n11
+  ' cell: fvlWKa_OQbtLhFLN5xGI-10
+  usecase "Salvataggio fallito" as n12
+}
+' edge cell: fvlWKa_OQbtLhFLN5xGI-4
+n5 -- n2
+' edge cell: fvlWKa_OQbtLhFLN5xGI-6
+n10 ..> n5 : <<extend>>
+' edge cell: fvlWKa_OQbtLhFLN5xGI-7
+n11 ..> n5 : <<extend>>
+' edge cell: fvlWKa_OQbtLhFLN5xGI-12
+n12 ..> n5 : <<extend>>
+@enduml

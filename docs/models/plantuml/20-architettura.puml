@@ -1,0 +1,31 @@
+@startuml
+' Generated from source/pages/20-architettura.xml
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam componentStyle uml2
+hide empty members
+package "Interface" as n1 {
+component "Interfaccia utente" as n2
+}
+package "Application Logic" as n3 {
+component "Gestione Utente" as n4
+component "Gestione\nAmministratore" as n5
+component "Gestione\nPrenotazione" as n6
+component "Gestione Attività" as n7
+}
+package "Storage" as n8 {
+component "Accesso ai dati" as n9
+}
+' cell UEpR_rWrs9911iT4-n8J-1
+n4 ..> n7
+' cell bookings-use-activities
+n6 ..> n7
+' cell bookings-use-users
+n4 ..> n6
+' cell admin-use-users
+n5 ..> n4
+' cell interface-to-application
+n1 ..> n3
+' cell application-to-storage
+n3 ..> n8
+@enduml

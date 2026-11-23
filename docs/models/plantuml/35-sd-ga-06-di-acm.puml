@@ -1,0 +1,80 @@
+@startuml
+' Generated from native mxGraph cells; do not use stale embedded metadata.
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam guillemet false
+actor "Cliente registrato" as p0
+boundary "RicercaAttivitàButton" as p1
+control "RicercaAttivitàControl" as p2
+boundary "RicercaAttivitàForm" as p3
+control "RicercaCompatibilitàControl" as p4
+entity "attivita:Attività [*]" as p5
+boundary "RisultatoRicercaAttivitàView" as p6
+||1||
+activate p0
+||1||
+activate p1
+' cell=m01; absolute_y=155.000000
+p0 -> p1 : 1: click()
+create p2
+' cell=m02; absolute_y=190.332000
+p1 -->> p2 : 1.1: «create»
+||1||
+activate p2
+create p3
+' cell=m03; absolute_y=274.000000
+p2 -->> p3 : 2: «create»
+||1||
+deactivate p1
+||1||
+deactivate p2
+||1||
+activate p3
+' cell=m04; absolute_y=351.000000
+p0 -> p3 : 3: inserimentoPreferenze(criteri)
+' cell=m05; absolute_y=400.000000
+p0 -> p3 : 4: submit()
+' cell=m06; absolute_y=450.000000
+p3 -> p2 : 4.1: submitDati(criteri)
+||1||
+activate p2
+' cell=m07; absolute_y=501.010000
+p2 -> p3 : 4.1.1: verificaCompletezzaEFormato()
+||1||
+deactivate p3
+' cell=m08; absolute_y=550.000000
+p3 -->> p2 : 4.1.2: TRUE
+' cell=m09; absolute_y=590.000000
+p2 -> p3 : 4.1.3: destroy()
+||1||
+destroy p3
+create p4
+' cell=m10; absolute_y=650.000000
+p2 -->> p4 : 4.1.4: «create»
+||1||
+activate p4
+' cell=m11; absolute_y=720.000000
+p2 -> p4 : 4.1.5: ricercaCompatibili(criteri)
+||1||
+activate p5
+' cell=m12; absolute_y=780.000000
+p4 -> p5 : 4.1.5.1: recuperaAttivitàDisponibili()
+||1||
+deactivate p5
+' cell=m13; absolute_y=835.000000
+p5 -->> p4 : attivitàDisponibili
+' cell=m14; absolute_y=880.000000
+p4 -> p4 : 4.1.5.2: selezionaCorrispondenti(criteri)
+||1||
+deactivate p4
+' cell=m15; absolute_y=960.000000
+p4 -->> p2 : attivitàCorrispondenti
+create p6
+' cell=m16; absolute_y=1000.000000
+p2 -->> p6 : 4.1.6: «create»(attivitàCorrispondenti)
+||1||
+deactivate p2
+||1||
+deactivate p0
+@enduml
