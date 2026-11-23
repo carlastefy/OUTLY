@@ -1,0 +1,37 @@
+@startuml
+' Generated from immutable native XML by convert_usecases.py.
+' Original IDs, endpoints and inference evidence are in reviews/usecases.json.
+left to right direction
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #181818
+skinparam actorBackgroundColor white
+skinparam usecaseBackgroundColor #30A8BC
+skinparam usecaseBorderColor #181818
+skinparam rectangleBackgroundColor white
+skinparam rectangleBorderColor #181818
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+
+' cell: admin
+actor "Amministratore" as n7
+' boundary cell: system
+rectangle " " as n2 {
+  ' cell: RF_GAM_01
+  usecase "Visualizzazione Richieste\nOrganizzatore" as n3
+  ' cell: RF_GAM_02
+  usecase "Gestione richiesta\nOrganizzatore" as n4
+  ' cell: RF_GAM_03
+  usecase "Visualizzazione Segnalazioni" as n5
+  ' cell: RF_GAM_04
+  usecase "Gestione segnalazioni" as n6
+}
+' edge cell: association-RF_GAM_01
+n7 -- n3
+' edge cell: association-RF_GAM_02
+n7 -- n4
+' edge cell: association-RF_GAM_03
+n7 -- n5
+' edge cell: association-RF_GAM_04
+n7 -- n6
+@enduml

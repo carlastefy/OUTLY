@@ -1,0 +1,33 @@
+@startuml
+' Generated from immutable native XML by convert_usecases.py.
+' Original IDs, endpoints and inference evidence are in reviews/usecases.json.
+left to right direction
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #181818
+skinparam actorBackgroundColor white
+skinparam usecaseBackgroundColor #30A8BC
+skinparam usecaseBorderColor #181818
+skinparam rectangleBackgroundColor white
+skinparam rectangleBorderColor #181818
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+
+' cell: B-AsytYy9budWWMKa-lh-1
+actor "Amministratore" as n2
+' boundary cell: B-AsytYy9budWWMKa-lh-4
+rectangle " " as n3 {
+  ' cell: B-AsytYy9budWWMKa-lh-6
+  usecase "Gestione Richiesta Organizzatore" as n5
+  ' cell: B-AsytYy9budWWMKa-lh-7
+  usecase "Rifiuto della richiesta" as n6
+  ' cell: B-AsytYy9budWWMKa-lh-8
+  usecase "Richiesta non più valida" as n7
+}
+' edge cell: B-AsytYy9budWWMKa-lh-5
+n5 -- n2
+' edge cell: B-AsytYy9budWWMKa-lh-9
+n6 ..> n5 : <<extend>>
+' edge cell: B-AsytYy9budWWMKa-lh-10
+n7 ..> n5 : <<extend>>
+@enduml

@@ -1,0 +1,33 @@
+@startuml
+' Generated from immutable native XML by convert_usecases.py.
+' Original IDs, endpoints and inference evidence are in reviews/usecases.json.
+left to right direction
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #181818
+skinparam actorBackgroundColor white
+skinparam usecaseBackgroundColor #30A8BC
+skinparam usecaseBorderColor #181818
+skinparam rectangleBackgroundColor white
+skinparam rectangleBorderColor #181818
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+
+' cell: AieT0TaJoUytrZVdKhMw-2
+actor "Cliente registrato" as n2
+' boundary cell: AieT0TaJoUytrZVdKhMw-3
+rectangle " " as n3 {
+  ' cell: AieT0TaJoUytrZVdKhMw-5
+  usecase "Nessuna Attività trovata" as n4
+  ' cell: AieT0TaJoUytrZVdKhMw-8
+  usecase "Recupero Attività" as n5
+  ' cell: AieT0TaJoUytrZVdKhMw-9
+  usecase "Ricerca Attività" as n6
+}
+' edge cell: AieT0TaJoUytrZVdKhMw-34
+n6 <-- n4 : <<extend>>
+' edge cell: AieT0TaJoUytrZVdKhMw-32
+n6 <-- n5 : <<extend>>
+' edge cell: AieT0TaJoUytrZVdKhMw-39
+n6 -- n2
+@enduml

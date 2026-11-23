@@ -1,0 +1,51 @@
+@startuml
+' Generated from immutable native XML by convert_usecases.py.
+' Original IDs, endpoints and inference evidence are in reviews/usecases.json.
+left to right direction
+skinparam shadowing false
+skinparam BackgroundColor white
+skinparam ArrowColor #181818
+skinparam actorBackgroundColor white
+skinparam usecaseBackgroundColor #30A8BC
+skinparam usecaseBorderColor #181818
+skinparam rectangleBackgroundColor white
+skinparam rectangleBorderColor #181818
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 14
+
+' cell: ea9rLByoBikW6tTbtBaY-2
+actor "Organizzatore" as n3
+' cell: ea9rLByoBikW6tTbtBaY-3
+actor "Cliente Registrato" as n4
+' boundary cell: ea9rLByoBikW6tTbtBaY-1
+rectangle " " as n2 {
+  ' cell: ea9rLByoBikW6tTbtBaY-6
+  usecase "Inserimento attività" as n5
+  ' cell: ea9rLByoBikW6tTbtBaY-7
+  usecase "Modifica attività" as n6
+  ' cell: ea9rLByoBikW6tTbtBaY-8
+  usecase "Eliminazione attività" as n7
+  ' cell: ea9rLByoBikW6tTbtBaY-9
+  usecase "Visualizzazione attività disponibili" as n8
+  ' cell: ea9rLByoBikW6tTbtBaY-10
+  usecase "Visualizzazione dettagliata dell'attività" as n9
+  ' cell: ea9rLByoBikW6tTbtBaY-12
+  usecase "Creazione gruppi temporanei" as n10
+  ' cell: Monf5hJXopPdJInFQ5gq-1
+  usecase "Ricerca dell'attività" as n11
+}
+' edge cell: Monf5hJXopPdJInFQ5gq-2
+n5 -- n3
+' edge cell: Monf5hJXopPdJInFQ5gq-3
+n6 -- n3
+' edge cell: Monf5hJXopPdJInFQ5gq-4
+n7 -- n3
+' edge cell: Monf5hJXopPdJInFQ5gq-5
+n4 -- n9
+' edge cell: Monf5hJXopPdJInFQ5gq-6
+n4 -- n8
+' edge cell: Monf5hJXopPdJInFQ5gq-7
+n4 -- n10
+' edge cell: Monf5hJXopPdJInFQ5gq-8
+n4 -- n11
+@enduml

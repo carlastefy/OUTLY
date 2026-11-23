@@ -1,0 +1,18 @@
+@startuml
+' Generated from source/pages/21-sdd.xml
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam componentStyle uml2
+hide empty members
+node "Smartphone Android" as n1 <<device>> {
+component "App Outly\n(Android)" as n2
+}
+node "Server" as n3 <<device>> {
+component "Backend Outly\n(Spring Boot)" as n4
+component "DBMS\n(MySQL)" as n5
+}
+' cell jdbc
+n4 -- n5 : JDBC
+' cell https
+n1 -- n3 : HTTPS
+@enduml
