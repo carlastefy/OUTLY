@@ -1,4 +1,4 @@
-package com.outly.backend;
+package it.unisa.outly;
 
 import org.junit.jupiter.api.Test;
 
