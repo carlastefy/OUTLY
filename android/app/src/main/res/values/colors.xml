@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="outly_green">#078F84</color>
+    <color name="outly_green_dark">#08766E</color>
+    <color name="outly_green_pale">#E8F5F3</color>
+    <color name="outly_yellow">#FFCC4A</color>
+    <color name="text_primary">#1E2A28</color>
+    <color name="text_secondary">#6D7976</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="background">#F6F8F7</color>
+    <color name="border">#DFE7E5</color>
+</resources>

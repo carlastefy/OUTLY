@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/le_tue_prenotazioni" style="@style/SectionTitle" />
+        <include layout="@layout/item_activity" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="@string/gruppo_temporaneo"
+            style="@style/SectionTitle" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/rounded_card"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="16dp">
+            <TextView android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/circle_green" android:gravity="center" android:text="M" android:textColor="@color/surface" android:textStyle="bold" />
+            <TextView android:layout_width="48dp" android:layout_height="48dp" android:layout_marginStart="-8dp" android:background="@drawable/circle_green" android:gravity="center" android:text="A" android:textColor="@color/surface" android:textStyle="bold" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ceramica Vietrese" android:textColor="@color/text_primary" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="2 partecipanti - Quorum quasi raggiunto" android:textColor="@color/text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
+
+
