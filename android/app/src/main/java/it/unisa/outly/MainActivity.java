@@ -35,6 +35,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.view.LayoutInflater;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -49,10 +50,31 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.provider.OpenableColumns;
 import it.unisa.outly.R;
+import it.unisa.outly.dto.ActivitySummary;
+import it.unisa.outly.dto.ActivityDetail;
+import it.unisa.outly.dto.ActivitySearchRequest;
+import it.unisa.outly.dto.ActivitySearchResult;
+import it.unisa.outly.dto.ProfileUpdateRequest;
+import it.unisa.outly.dto.ReservationResponse;
+import it.unisa.outly.dto.ReservationParticipantsResponse;
+import it.unisa.outly.dto.UserProfile;
+import it.unisa.outly.dto.LoginResponse;
+import it.unisa.outly.dto.RegistrationRequest;
+import it.unisa.outly.repository.ActivityRepository;
+import it.unisa.outly.repository.AuthRepository;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Deque;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public class MainActivity
 extends Activity {
@@ -82,6 +104,47 @@ extends Activity {
     private final boolean[] pendingAdminReports = {true, true};
     private String adminName = "Amministratore";
     private String adminEmail = "admin@outly.it";
+    private AuthRepository authRepository;
+    private ActivityRepository activityRepository;
+    private EditText loginEmailInput;
+    private EditText loginPasswordInput;
+    private TextView loginAction;
+    private boolean checkingSavedSession;
+    private LoginResponse currentUser;
+    private UserProfile currentProfile;
+    private TextView profileName;
+    private TextView profileSurname;
+    private TextView profileEmail;
+    private TextView profilePhone;
+    private EditText registrationNameInput;
+    private EditText registrationSurnameInput;
+    private EditText registrationEmailInput;
+    private EditText registrationPasswordInput;
+    private EditText registrationPhoneInput;
+    private EditText homeCityInput;
+    private EditText searchBudgetInput;
+    private SeekBar socialitySlider;
+    private SeekBar technicalDifficultySlider;
+    private SeekBar physicalDifficultySlider;
+    private TextView accessibilitySelection;
+    private TextView activityTypeSelection;
+    private ActivitySearchRequest pendingActivitySearch;
+    private ActivitySummary selectedActivity;
+    private BookingEntry selectedBooking;
+    private ReservationParticipantsResponse reservationParticipants;
+    private TextView bookingAction;
+    private boolean bookingInProgress;
+    private final List<BookingEntry> userBookings = new ArrayList<>();
+
+    private static final class BookingEntry {
+        private final ActivitySummary activity;
+        private final ReservationResponse reservation;
+
+        private BookingEntry(ActivitySummary activity, ReservationResponse reservation) {
+            this.activity = activity;
+            this.reservation = reservation;
+        }
+    }
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -97,7 +160,10 @@ extends Activity {
         });
         this.setContentView((View)this.root);
         this.root.requestApplyInsets();
+        this.authRepository = new AuthRepository(this);
+        this.activityRepository = new ActivityRepository(this);
         this.showLogin();
+        this.verifySavedSession();
     }
 
     private int dp(float value) {
@@ -257,11 +323,16 @@ extends Activity {
         avatarParams.topMargin = this.dp(12.0f);
         avatarParams.bottomMargin = this.dp(28.0f);
         form.addView((View)avatar, (ViewGroup.LayoutParams)avatarParams);
-        form.addView((View)this.labeledField("E-MAIL", "Inserisci e-mail", 33, 44), (ViewGroup.LayoutParams)this.lp(-1, -2));
+        LinearLayout emailField = this.labeledField("E-MAIL", "Inserisci e-mail", 33, 44);
+        this.loginEmailInput = (EditText)emailField.getChildAt(1);
+        form.addView((View)emailField, (ViewGroup.LayoutParams)this.lp(-1, -2));
         LinearLayout.LayoutParams passParams = this.lp(-1, -2);
         passParams.topMargin = this.dp(12.0f);
-        form.addView((View)this.labeledField("PASSWORD", "Inserisci password", 129, 44), (ViewGroup.LayoutParams)passParams);
-        TextView login = this.primaryAction("ACCEDI", () -> this.openApp("home", false));
+        LinearLayout passwordField = this.labeledField("PASSWORD", "Inserisci password", 129, 44);
+        this.loginPasswordInput = (EditText)passwordField.getChildAt(1);
+        form.addView((View)passwordField, (ViewGroup.LayoutParams)passParams);
+        TextView login = this.primaryAction("ACCEDI", this::submitLogin);
+        this.loginAction = login;
         LinearLayout.LayoutParams loginParams = this.lp(-1, 54);
         loginParams.topMargin = this.dp(44.0f);
         form.addView((View)login, (ViewGroup.LayoutParams)loginParams);
@@ -272,6 +343,117 @@ extends Activity {
         form.addView((View)register, (ViewGroup.LayoutParams)registerParams);
         page.addView((View)form);
         this.root.addView((View)page, (ViewGroup.LayoutParams)new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private void verifySavedSession() {
+        if (!this.authRepository.hasSavedSession()) {
+            return;
+        }
+        this.checkingSavedSession = true;
+        if (this.loginAction != null) {
+            this.loginAction.setEnabled(false);
+        }
+        this.authRepository.checkSession(new AuthRepository.ResultCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean administrator) {
+                checkingSavedSession = false;
+                if (!isFinishing()) {
+                    openApp(Boolean.TRUE.equals(administrator) ? "admin" : "home", false);
+                }
+            }
+
+            @Override
+            public void onFailure(String message, boolean sessionExpired) {
+                checkingSavedSession = false;
+                if (isFinishing()) {
+                    return;
+                }
+                if (loginAction != null) {
+                    loginAction.setEnabled(true);
+                }
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void submitLogin() {
+        if (this.checkingSavedSession) {
+            return;
+        }
+        String email = this.loginEmailInput.getText().toString().trim();
+        String password = this.loginPasswordInput.getText().toString();
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Inserisci e-mail e password.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        this.loginAction.setEnabled(false);
+        this.loginAction.setText("ACCESSO...");
+        this.authRepository.login(email, password, new AuthRepository.ResultCallback<LoginResponse>() {
+            @Override
+            public void onSuccess(LoginResponse result) {
+                currentUser = result;
+                currentProfile = null;
+                loginPasswordInput.setText("");
+                openApp("AMMINISTRATORE".equals(result.getRuolo()) ? "admin" : "home", false);
+            }
+
+            @Override
+            public void onFailure(String message, boolean sessionExpired) {
+                if (isFinishing()) {
+                    return;
+                }
+                loginAction.setEnabled(true);
+                loginAction.setText("ACCEDI");
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void handleActivityFailure(String message, boolean sessionExpired) {
+        if (sessionExpired) {
+            currentUser = null;
+            currentProfile = null;
+            userBookings.clear();
+            selectedBooking = null;
+            reservationParticipants = null;
+            history.clear();
+            showLogin();
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+    private void logout() {
+        this.authRepository.logout(new AuthRepository.ResultCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                currentUser = null;
+                currentProfile = null;
+                userBookings.clear();
+                selectedBooking = null;
+                reservationParticipants = null;
+                history.clear();
+                showLogin();
+                Toast.makeText(MainActivity.this, "Logout effettuato.", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFailure(String message, boolean sessionExpired) {
+                if (isFinishing()) {
+                    return;
+                }
+                if (sessionExpired) {
+                    currentUser = null;
+                    currentProfile = null;
+                    userBookings.clear();
+                    selectedBooking = null;
+                    reservationParticipants = null;
+                    history.clear();
+                    showLogin();
+                }
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void showRegistration() {
@@ -291,15 +473,18 @@ extends Activity {
         LinearLayout.LayoutParams headingParams = this.lp(-1, 62);
         headingParams.bottomMargin = this.dp(10.0f);
         form.addView((View)heading, (ViewGroup.LayoutParams)headingParams);
-        this.addField(form, "NOME", "Inserisci nome", 1, 42, 16);
-        this.addField(form, "COGNOME", "Inserisci cognome", 1, 42, 16);
-        this.addField(form, "E-MAIL", "Inserisci e-mail", 32, 42, 16);
-        this.addField(form, "PASSWORD", "Inserisci password", 128, 42, 16);
-        this.addField(form, "TELEFONO", "Inserisci telefono", 3, 42, 16);
-        TextView confirm = this.primaryAction("CONFERMA", () -> {
-            Toast.makeText((Context)this, (CharSequence)"Registrazione completata", (int)0).show();
-            this.showLogin();
-        });
+        this.registrationNameInput = this.addRegistrationField(
+                form, "NOME", "Inserisci nome", 1, 16);
+        this.registrationSurnameInput = this.addRegistrationField(
+                form, "COGNOME", "Inserisci cognome", 1, 16);
+        this.registrationEmailInput = this.addRegistrationField(
+                form, "E-MAIL", "Inserisci e-mail", 33, 16);
+        this.registrationPasswordInput = this.addRegistrationField(
+                form, "PASSWORD", "Inserisci password", 129, 16);
+        this.registrationPhoneInput = this.addRegistrationField(
+                form, "TELEFONO", "Inserisci telefono", 3, 16);
+        TextView confirm = this.primaryAction("CONFERMA", this::submitRegistration);
+        this.loginAction = confirm;
         LinearLayout.LayoutParams buttonParams = this.lp(-1, 54);
         buttonParams.topMargin = this.dp(42.0f);
         form.addView((View)confirm, (ViewGroup.LayoutParams)buttonParams);
@@ -307,13 +492,65 @@ extends Activity {
         this.root.addView((View)page, (ViewGroup.LayoutParams)new FrameLayout.LayoutParams(-1, -1));
     }
 
-    private void addField(LinearLayout parent, String label, String hint, int type, int height, int top) {
+    private EditText addRegistrationField(LinearLayout form, String label, String hint,
+                                          int inputType, int topMargin) {
+        LinearLayout field = this.labeledField(label, hint, inputType, 42);
+        LinearLayout.LayoutParams params = this.lp(-1, -2);
+        params.topMargin = this.dp(topMargin);
+        form.addView((View)field, (ViewGroup.LayoutParams)params);
+        return (EditText)field.getChildAt(1);
+    }
+
+    private void submitRegistration() {
+        String nome = this.registrationNameInput.getText().toString().trim();
+        String cognome = this.registrationSurnameInput.getText().toString().trim();
+        String email = this.registrationEmailInput.getText().toString().trim();
+        String password = this.registrationPasswordInput.getText().toString();
+        String telefono = this.registrationPhoneInput.getText().toString().trim();
+        if (nome.isEmpty() || cognome.isEmpty() || email.isEmpty()
+                || password.isEmpty() || telefono.isEmpty()) {
+            Toast.makeText(this, "Compila tutti i campi.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        this.loginAction.setEnabled(false);
+        this.loginAction.setText("REGISTRAZIONE...");
+        this.authRepository.register(
+                new RegistrationRequest(nome, cognome, email, password, telefono),
+                new AuthRepository.ResultCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        if (isFinishing()) {
+                            return;
+                        }
+                        showLogin();
+                        loginEmailInput.setText(email);
+                        Toast.makeText(MainActivity.this,
+                                "Registrazione completata. Accedi con le tue credenziali.",
+                                Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onFailure(String message, boolean sessionExpired) {
+                        if (isFinishing()) {
+                            return;
+                        }
+                        loginAction.setEnabled(true);
+                        loginAction.setText("CONFERMA");
+                        Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    private EditText addField(LinearLayout parent, String label, String hint,
+                              int type, int height, int top) {
         int classBits = type & 0xF;
         int inputType = classBits == 0 ? 1 | type : type;
         LinearLayout group = this.labeledField(label, hint, inputType, height);
         LinearLayout.LayoutParams params = this.lp(-1, -2);
         params.topMargin = this.dp(top);
         parent.addView((View)group, (ViewGroup.LayoutParams)params);
+        return (EditText)group.getChildAt(1);
     }
 
     private LinearLayout selectField(String label, String[] choices) {
@@ -564,43 +801,149 @@ extends Activity {
     }
 
     private View homePage() {
-        FrameLayout frame = new FrameLayout((Context)this);
-        TextView prompt = this.text("Cosa vuoi fare oggi?", 20, INK, false);
-        prompt.setGravity(17);
-        prompt.setBackground((Drawable)this.shape(-1, AQUA, 34.0f));
-        prompt.setElevation((float)this.dp(3.0f));
-        FrameLayout.LayoutParams promptParams = new FrameLayout.LayoutParams(-1, this.dp(58.0f), 17);
-        promptParams.setMargins(this.dp(52.0f), 0, this.dp(52.0f), this.dp(8.0f));
-        frame.addView((View)prompt, (ViewGroup.LayoutParams)promptParams);
-        prompt.setOnClickListener(view -> this.navigate("filters"));
-        return frame;
+        View home = LayoutInflater.from(this).inflate(R.layout.screen_home, null, false);
+        View searchButton = home.findViewById(R.id.homeSearchButton);
+        LinearLayout content = (LinearLayout)((ScrollView)home).getChildAt(0);
+        LinearLayout locationCard = (LinearLayout)content.getChildAt(1);
+        this.homeCityInput = (EditText)locationCard.getChildAt(0);
+        searchButton.setOnClickListener(view -> this.navigate("filters"));
+        List<LinearLayout> activityCards = new ArrayList<>();
+        for (int i = 3; i < content.getChildCount(); i++) {
+            View child = content.getChildAt(i);
+            if (child instanceof LinearLayout) {
+                activityCards.add((LinearLayout)child);
+            }
+        }
+        for (LinearLayout card : activityCards) {
+            this.setActivityCard(card, null, "Caricamento attività...");
+        }
+        this.activityRepository.getActivities(new ActivityRepository.ResultCallback() {
+            @Override
+            public void onSuccess(List<ActivitySummary> activities) {
+                if (!currentScreen.equals("home")) {
+                    return;
+                }
+                for (int i = 0; i < activityCards.size(); i++) {
+                    LinearLayout card = activityCards.get(i);
+                    if (i < activities.size()) {
+                        setActivityCard(card, activities.get(i), null);
+                    } else {
+                        setActivityCard(card, null,
+                                activities.isEmpty() ? "Nessuna attività disponibile."
+                                        : "Nessun'altra attività disponibile.");
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(String message, boolean sessionExpired) {
+                if (sessionExpired) {
+                    handleActivityFailure(message, true);
+                    return;
+                }
+                if (!currentScreen.equals("home")) {
+                    return;
+                }
+                for (LinearLayout card : activityCards) {
+                    setActivityCard(card, null, message);
+                }
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
+        return home;
+    }
+
+    private void setActivityCard(LinearLayout card, ActivitySummary activity, String status) {
+        LinearLayout details = (LinearLayout)card.getChildAt(1);
+        TextView title = (TextView)details.getChildAt(0);
+        TextView placeAndDate = (TextView)details.getChildAt(1);
+        TextView price = (TextView)details.getChildAt(2);
+        if (activity == null) {
+            title.setText(status);
+            placeAndDate.setText("");
+            price.setText("");
+            return;
+        }
+        title.setText(activity.titolo == null ? "" : activity.titolo);
+        String city = activity.luogo == null || activity.luogo.citta == null
+                ? "" : activity.luogo.citta;
+        String dateAndTime = formatActivityDate(activity.data, activity.ora);
+        placeAndDate.setText(dateAndTime.isEmpty() ? city : dateAndTime + " - " + city);
+        price.setText("Costo: " + formatActivityPrice(activity.costo));
+        card.setOnClickListener(view -> {
+            selectedActivity = activity;
+            navigate("detail");
+        });
+    }
+
+    private String formatActivityDate(String date, String time) {
+        String formattedDate = formatDateValue(date, "yyyy-MM-dd", "EEE d MMM");
+        String formattedTime = formatDateValue(time, "HH:mm:ss", "HH:mm");
+        if (formattedTime.isEmpty()) {
+            formattedTime = formatDateValue(time, "HH:mm", "HH:mm");
+        }
+        if (formattedDate.isEmpty() || formattedTime.isEmpty()) {
+            return "";
+        }
+        return formattedDate + " " + formattedTime;
+    }
+
+    private String formatDateValue(String value, String inputPattern, String outputPattern) {
+        if (value == null) {
+            return "";
+        }
+        SimpleDateFormat input = new SimpleDateFormat(inputPattern, Locale.ITALIAN);
+        input.setLenient(false);
+        ParsePosition position = new ParsePosition(0);
+        Date parsed = input.parse(value, position);
+        if (parsed == null || position.getIndex() != value.length()) {
+            return "";
+        }
+        return new SimpleDateFormat(outputPattern, Locale.ITALIAN).format(parsed);
+    }
+
+    private String formatActivityPrice(BigDecimal price) {
+        if (price == null) {
+            return "";
+        }
+        return NumberFormat.getCurrencyInstance(Locale.ITALY).format(price);
     }
 
     private View filtersPage() {
         LinearLayout body = this.column();
         body.addView((View)this.title("Cosa vuoi fare oggi?"), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        this.addField(body, "costo", "\u20ac 0,00", 8194, 44, 8);
+        LinearLayout budgetField = this.labeledField("costo", "\u20ac 0,00", 8194, 44);
+        this.searchBudgetInput = (EditText)budgetField.getChildAt(1);
+        body.addView((View)budgetField, (ViewGroup.LayoutParams)this.lp(-1, -2));
+        if (this.homeCityInput != null && !this.homeCityInput.getText().toString().trim().isEmpty()) {
+            body.addView((View)this.text("Città: " + this.homeCityInput.getText().toString().trim(),
+                    13, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, 28));
+        }
         this.addField(body, "tempo", "0 min", 2, 44, 12);
-        this.addFilterSlider(body, "socialit\u00e0", 12);
-        this.addFilterSlider(body, "difficolt\u00e0 tecnica", 12);
-        this.addFilterSlider(body, "difficolt\u00e0 fisica", 12);
-        this.addFilterSelect(body, "caratteristiche di accessibilit\u00e0", new String[]{"Sedia a rotelle", "Ascensore", "Difficolt\u00e0 motorie", "Sensibilit\u00e0 sensoriali", "Interprete LIS"}, 12);
-        this.addFilterSelect(body, "tipo attivit\u00e0", new String[]{"Arte", "Giochi", "Sport", "Natura", "Cultura"}, 12);
-        TextView search = this.primaryAction("CERCA ATTIVIT\u00c0", () -> this.navigate("results"));
+        this.socialitySlider = this.addFilterSlider(body, "socialit\u00e0", 12);
+        this.technicalDifficultySlider = this.addFilterSlider(body, "difficolt\u00e0 tecnica", 12);
+        this.physicalDifficultySlider = this.addFilterSlider(body, "difficolt\u00e0 fisica", 12);
+        this.accessibilitySelection = this.addFilterSelect(body, "caratteristiche di accessibilit\u00e0",
+                new String[]{"Sedia a rotelle", "Ascensore", "Difficolt\u00e0 motorie",
+                        "Sensibilit\u00e0 sensoriali", "Interprete LIS"}, 12);
+        this.activityTypeSelection = this.addFilterSelect(body, "tipo attivit\u00e0",
+                new String[]{"Arte", "Giochi", "Sport", "Natura", "Cultura"}, 12);
+        TextView search = this.primaryAction("CERCA ATTIVIT\u00c0", this::submitActivitySearch);
         LinearLayout.LayoutParams actionParams = this.lp(-1, 54);
         actionParams.topMargin = this.dp(20.0f);
         body.addView((View)search, (ViewGroup.LayoutParams)actionParams);
         return this.scroll(body, 24);
     }
 
-    private void addFilterSelect(LinearLayout parent, String label, String[] choices, int top) {
+    private TextView addFilterSelect(LinearLayout parent, String label, String[] choices, int top) {
         LinearLayout group = this.selectField(label, choices);
         LinearLayout.LayoutParams params = this.lp(-1, -2);
         params.topMargin = this.dp(top);
         parent.addView((View)group, (ViewGroup.LayoutParams)params);
+        return (TextView)((LinearLayout)group.getChildAt(1)).getChildAt(0);
     }
 
-    private void addFilterSlider(LinearLayout parent, String label, int top) {
+    private SeekBar addFilterSlider(LinearLayout parent, String label, int top) {
         String[] levels = new String[]{"Nessuna", "Bassa", "Media", "Alta"};
         LinearLayout group = this.column();
         LinearLayout heading = this.row();
@@ -634,15 +977,120 @@ extends Activity {
         LinearLayout.LayoutParams params = this.lp(-1, -2);
         params.topMargin = this.dp(top);
         parent.addView((View)group, (ViewGroup.LayoutParams)params);
+        return slider;
+    }
+
+    private void submitActivitySearch() {
+        BigDecimal budgetMax = null;
+        String budget = this.searchBudgetInput.getText().toString().trim()
+                .replace("\u20ac", "").replace(",", ".").trim();
+        if (!budget.isEmpty()) {
+            try {
+                budgetMax = new BigDecimal(budget);
+                if (budgetMax.signum() < 0) {
+                    throw new NumberFormatException("Negative budget");
+                }
+            } catch (NumberFormatException exception) {
+                Toast.makeText(this, "Inserisci un budget valido.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
+        String city = this.homeCityInput == null
+                ? null : this.homeCityInput.getText().toString().trim();
+        if (city != null && city.isEmpty()) {
+            city = null;
+        }
+        String accessibility = this.accessibilitySelection.getText().toString();
+        Set<String> accessibilityCriteria = "Scegli".equals(accessibility)
+                ? Collections.emptySet() : new LinkedHashSet<>(Collections.singletonList(accessibility));
+        String activityType = this.activityTypeSelection.getText().toString();
+        if ("Scegli".equals(activityType)) {
+            activityType = null;
+        }
+        this.pendingActivitySearch = new ActivitySearchRequest(
+                budgetMax, city, null, accessibilityCriteria, activityType,
+                searchLevel(this.socialitySlider), searchLevel(this.technicalDifficultySlider),
+                searchLevel(this.physicalDifficultySlider));
+        this.navigate("results");
     }
 
     private View resultsPage() {
         LinearLayout body = this.column();
         body.addView((View)this.title("Risultati ricerca"), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        this.addActivityCard(body, 0, false);
-        this.addActivityCard(body, 1, false);
-        this.addActivityCard(body, 2, false);
+        TextView status = this.text("Ricerca in corso...", 14, MUTED, false);
+        body.addView((View)status, (ViewGroup.LayoutParams)this.lp(-1, 48));
+        ActivitySearchRequest request = this.pendingActivitySearch;
+        if (request == null) {
+            request = new ActivitySearchRequest(null, null, null, Collections.emptySet(),
+                    null, null, null, null);
+        }
+        this.activityRepository.searchActivities(request, new ActivityRepository.SearchResultCallback() {
+            @Override
+            public void onSuccess(List<ActivitySearchResult> results) {
+                if (!currentScreen.equals("results")) {
+                    return;
+                }
+                body.removeView(status);
+                if (results.isEmpty()) {
+                    body.addView((View)text("Nessuna attività trovata.", 14, MUTED, false),
+                            (ViewGroup.LayoutParams)lp(-1, 48));
+                    return;
+                }
+                for (ActivitySearchResult result : results) {
+                    if (result != null && result.attivita != null) {
+                        addSearchActivityCard(body, result);
+                    }
+                }
+                if (body.getChildCount() == 1) {
+                    body.addView((View)text("Nessuna attività trovata.", 14, MUTED, false),
+                            (ViewGroup.LayoutParams)lp(-1, 48));
+                }
+            }
+
+            @Override
+            public void onFailure(String message, boolean sessionExpired) {
+                if (sessionExpired) {
+                    handleActivityFailure(message, true);
+                    return;
+                }
+                if (!currentScreen.equals("results")) {
+                    return;
+                }
+                status.setText(message);
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
         return this.scroll(body, 24);
+    }
+
+    private String searchLevel(SeekBar slider) {
+        return new String[]{"NESSUNA", "BASSA", "MEDIA", "ALTA"}[slider.getProgress()];
+    }
+
+    private void addSearchActivityCard(LinearLayout parent, ActivitySearchResult result) {
+        View card = LayoutInflater.from(this).inflate(R.layout.item_activity, parent, false);
+        ActivitySummary activity = result.attivita;
+        LinearLayout cardDetails = (LinearLayout)((LinearLayout)card).getChildAt(1);
+        ((TextView)cardDetails.getChildAt(0)).setText(activity.titolo == null ? "" : activity.titolo);
+        String city = activity.luogo == null || activity.luogo.citta == null
+                ? "" : activity.luogo.citta;
+        String dateAndTime = formatActivityDate(activity.data, activity.ora);
+        ((TextView)cardDetails.getChildAt(1)).setText(
+                dateAndTime.isEmpty() ? city : dateAndTime + " - " + city);
+        ((TextView)cardDetails.getChildAt(2)).setText(
+                result.compatibilitaPercentuale == null
+                        ? "" : result.compatibilitaPercentuale + "% compatibile");
+        if (activity.titolo != null) {
+            ((TextView)((LinearLayout)card).getChildAt(0)).setText(activity.titolo);
+        }
+        card.setOnClickListener(view -> {
+            selectedActivity = activity;
+            this.navigate("detail");
+        });
+        LinearLayout.LayoutParams params = this.lp(-1, -2);
+        params.topMargin = this.dp(12.0f);
+        parent.addView(card, params);
     }
 
     private void addActivityCard(LinearLayout parent, int index, boolean organizer) {
@@ -721,17 +1169,41 @@ extends Activity {
     private View detailPage() {
         LinearLayout body = this.column();
         body.addView((View)this.title("Dettagli Attivit\u00e0"), (ViewGroup.LayoutParams)this.lp(-1, -2));
+        ActivitySummary activity = selectedActivity;
         LinearLayout hero = this.row();
-        ImageView photo = this.activityPhoto(0);
+        int photoIndex = activity == null || activity.idAttivita == null
+                ? 0 : (int)Math.floorMod(activity.idAttivita, 3L);
+        ImageView photo = this.activityPhoto(photoIndex);
         hero.addView((View)photo, (ViewGroup.LayoutParams)this.lp(142, 112));
         LinearLayout summary = this.column();
         summary.setPadding(this.dp(12.0f), this.dp(10.0f), this.dp(10.0f), this.dp(10.0f));
         summary.setBackground((Drawable)this.shape(PALE, BORDER, 12.0f));
-        summary.addView((View)this.text("CERAMICA PER TUTTI", 14, INK, true), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        summary.addView((View)this.text("il 10/11/2026 ore 10:30", 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        summary.addView((View)this.text("Vietri sul Mare, via Vittorio II, 84019", 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        summary.addView((View)this.text("durata: 2 ore", 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        summary.addView((View)this.text("numero max partecipanti: 10", 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
+        String title = activity == null || activity.titolo == null ? "Attivit\u00e0" : activity.titolo;
+        String dateAndTime = activity == null ? "" : formatActivityDate(activity.data, activity.ora);
+        String place = "";
+        if (activity != null && activity.luogo != null) {
+            place = activity.luogo.indirizzo == null ? "" : activity.luogo.indirizzo;
+            if (activity.luogo.citta != null && !activity.luogo.citta.isEmpty()) {
+                place = place.isEmpty() ? activity.luogo.citta
+                        : place + ", " + activity.luogo.citta;
+            }
+            if (activity.luogo.provincia != null && !activity.luogo.provincia.isEmpty()) {
+                place = place.isEmpty() ? activity.luogo.provincia
+                        : place + " (" + activity.luogo.provincia + ")";
+            }
+        }
+        TextView detailTitle = this.text(title, 14, INK, true);
+        summary.addView((View)detailTitle, (ViewGroup.LayoutParams)this.lp(-1, -2));
+        TextView detailDate = this.text(dateAndTime.isEmpty()
+                ? "Data non disponibile" : dateAndTime, 12, MUTED, false);
+        summary.addView((View)detailDate, (ViewGroup.LayoutParams)this.lp(-1, -2));
+        TextView detailPlace = this.text(place.isEmpty()
+                ? "Luogo non disponibile" : place, 12, MUTED, false);
+        summary.addView((View)detailPlace, (ViewGroup.LayoutParams)this.lp(-1, -2));
+        TextView detailDuration = this.text("Durata non disponibile", 12, MUTED, false);
+        summary.addView((View)detailDuration, (ViewGroup.LayoutParams)this.lp(-1, -2));
+        TextView detailCapacity = this.text("Capienza non disponibile", 12, MUTED, false);
+        summary.addView((View)detailCapacity, (ViewGroup.LayoutParams)this.lp(-1, -2));
         LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(0, this.dp(142.0f), 1.0f);
         summaryParams.leftMargin = this.dp(10.0f);
         hero.addView((View)summary, (ViewGroup.LayoutParams)summaryParams);
@@ -740,79 +1212,228 @@ extends Activity {
         LinearLayout.LayoutParams descTitleParams = this.lp(-1, 34);
         descTitleParams.topMargin = this.dp(12.0f);
         body.addView((View)descTitle, (ViewGroup.LayoutParams)descTitleParams);
-        TextView description = this.valueBox("Lezione dedicata alla creazione di vasi in stile vietrese", 62);
+        TextView description = this.valueBox("Descrizione non disponibile", 62);
         body.addView((View)description, (ViewGroup.LayoutParams)this.lp(-1, 68));
         LinearLayout firstRow = this.row();
-        this.addPair(firstRow, "Costo", "\u20ac 25,00");
-        this.addPair(firstRow, "Tipologia attivit\u00e0", "Arte");
+        TextView detailCost = this.addPair(firstRow, "Costo", activity == null
+                ? "Non disponibile" : formatActivityPrice(activity.costo));
+        TextView detailType = this.addPair(firstRow, "Tipologia attivit\u00e0", "Non disponibile");
         LinearLayout.LayoutParams pairParams = this.lp(-1, 68);
         pairParams.topMargin = this.dp(12.0f);
         body.addView((View)firstRow, (ViewGroup.LayoutParams)pairParams);
         LinearLayout secondRow = this.row();
-        this.addPair(secondRow, "Preferenze di socialit\u00e0", "Basso");
-        this.addPair(secondRow, "Numero di prenotazioni", "22");
+        TextView detailSociality = this.addPair(secondRow,
+                "Preferenze di socialit\u00e0", "Non disponibile");
+        TextView detailBookings = this.addPair(secondRow,
+                "Numero di prenotazioni", "Non disponibile");
         LinearLayout.LayoutParams secondParams = this.lp(-1, 68);
         secondParams.topMargin = this.dp(12.0f);
         body.addView((View)secondRow, (ViewGroup.LayoutParams)secondParams);
         LinearLayout thirdRow = this.row();
-        this.addPair(thirdRow, "Difficolt\u00e0 tecnica", "Nessuna");
-        this.addPair(thirdRow, "Difficolt\u00e0 fisica", "Nessuna");
+        TextView detailTechnical = this.addPair(thirdRow,
+                "Difficolt\u00e0 tecnica", "Non disponibile");
+        TextView detailPhysical = this.addPair(thirdRow,
+                "Difficolt\u00e0 fisica", "Non disponibile");
         LinearLayout.LayoutParams thirdParams = this.lp(-1, 68);
         thirdParams.topMargin = this.dp(12.0f);
         body.addView((View)thirdRow, (ViewGroup.LayoutParams)thirdParams);
-        body.addView((View)this.labeledValue("Caratteristiche di accessibilit\u00e0", "Alta", 40), (ViewGroup.LayoutParams)this.lp(-1, 66));
-        TextView book = this.primaryAction("PRENOTA", () -> new AlertDialog.Builder((Context)this).setMessage((CharSequence)"Vuoi prenotare questa attivit\u00e0?").setNegativeButton((CharSequence)"ANNULLA", null).setPositiveButton((CharSequence)"PRENOTA", (dialog, which) -> {
-            Toast.makeText((Context)this, (CharSequence)"Prenotazione confermata", (int)0).show();
-            this.navigate("bookings");
-        }).show());
+        LinearLayout accessibility = this.labeledValue("Caratteristiche di accessibilit\u00e0",
+                "Non disponibile", 40);
+        TextView detailAccessibility = (TextView)accessibility.getChildAt(1);
+        body.addView((View)accessibility, (ViewGroup.LayoutParams)this.lp(-1, 66));
+        TextView book = this.primaryAction("PRENOTA", () -> { });
+        this.bookingAction = book;
+        book.setOnClickListener(view ->
+                new AlertDialog.Builder((Context)this)
+                        .setMessage((CharSequence)"Vuoi prenotare questa attività?")
+                        .setNegativeButton((CharSequence)"ANNULLA", null)
+                        .setPositiveButton((CharSequence)"PRENOTA",
+                                (dialog, which) -> this.submitBooking())
+                        .show());
         LinearLayout.LayoutParams bookParams = this.lp(-1, 58);
         bookParams.topMargin = this.dp(16.0f);
         body.addView((View)book, (ViewGroup.LayoutParams)bookParams);
+        if (activity != null && activity.idAttivita != null) {
+            Long requestedActivityId = activity.idAttivita;
+            activityRepository.getActivity(requestedActivityId,
+                    new ActivityRepository.DetailCallback() {
+                        @Override
+                        public void onSuccess(ActivityDetail detail) {
+                            if (isFinishing() || !currentScreen.equals("detail")
+                                    || selectedActivity == null
+                                    || !requestedActivityId.equals(selectedActivity.idAttivita)) {
+                                return;
+                            }
+                            detailTitle.setText(detail.titolo == null ? "" : detail.titolo);
+                            detailDate.setText(formatActivityDate(detail.data, detail.ora));
+                            String detailLocation = "";
+                            if (detail.luogo != null) {
+                                detailLocation = detail.luogo.indirizzo == null
+                                        ? "" : detail.luogo.indirizzo;
+                                if (detail.luogo.citta != null && !detail.luogo.citta.isEmpty()) {
+                                    detailLocation = detailLocation.isEmpty()
+                                            ? detail.luogo.citta
+                                            : detailLocation + ", " + detail.luogo.citta;
+                                }
+                                if (detail.luogo.provincia != null
+                                        && !detail.luogo.provincia.isEmpty()) {
+                                    detailLocation = detailLocation.isEmpty()
+                                            ? detail.luogo.provincia
+                                            : detailLocation + " (" + detail.luogo.provincia + ")";
+                                }
+                            }
+                            detailPlace.setText(detailLocation.isEmpty()
+                                    ? "Luogo non disponibile" : detailLocation);
+                            detailDuration.setText(detail.durataMinuti == null
+                                    ? "Durata non disponibile"
+                                    : "Durata: " + detail.durataMinuti + " minuti");
+                            detailCapacity.setText(detail.numeroMassimoPartecipanti == null
+                                    ? "Capienza non disponibile"
+                                    : "Capienza massima: " + detail.numeroMassimoPartecipanti);
+                            description.setText(detail.descrizione == null
+                                    ? "Descrizione non disponibile" : detail.descrizione);
+                            detailCost.setText(detail.costo == null
+                                    ? "Non disponibile" : formatActivityPrice(detail.costo));
+                            detailType.setText(detail.tipologiaAttivita == null
+                                    ? "Non disponibile" : detail.tipologiaAttivita);
+                            detailSociality.setText(detail.preferenzeSocialita == null
+                                    ? "Non disponibile" : detail.preferenzeSocialita);
+                            detailBookings.setText(detail.numeroPrenotazioni == null
+                                    ? "Non disponibile" : detail.numeroPrenotazioni.toString());
+                            detailTechnical.setText(detail.difficoltaTecnica == null
+                                    ? "Non disponibile" : detail.difficoltaTecnica);
+                            detailPhysical.setText(detail.difficoltaFisica == null
+                                    ? "Non disponibile" : detail.difficoltaFisica);
+                            detailAccessibility.setText(detail.caratteristicheAccessibilita == null
+                                    || detail.caratteristicheAccessibilita.isEmpty()
+                                    ? "Nessuna" : android.text.TextUtils.join(
+                                    ", ", detail.caratteristicheAccessibilita));
+                            if (Boolean.FALSE.equals(detail.prenotabile)) {
+                                book.setText("NON PRENOTABILE");
+                                book.setEnabled(false);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(String message, boolean sessionExpired) {
+                            if (isFinishing()) {
+                                return;
+                            }
+                            if (sessionExpired) {
+                                handleActivityFailure(message, true);
+                            } else if (currentScreen.equals("detail")) {
+                                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    });
+        }
         return this.scroll(body, 22);
     }
 
-    private void addPair(LinearLayout row, String label, String value) {
+    private void submitBooking() {
+        if (bookingInProgress) {
+            return;
+        }
+        if (selectedActivity == null || selectedActivity.idAttivita == null) {
+            Toast.makeText(this, "Seleziona un'attività caricata dal backend.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        ActivitySummary activity = selectedActivity;
+        bookingInProgress = true;
+        bookingAction.setEnabled(false);
+        activityRepository.bookActivity(activity.idAttivita,
+                new ActivityRepository.ReservationCallback() {
+                    @Override
+                    public void onSuccess(ReservationResponse reservation) {
+                        bookingInProgress = false;
+                        if (isFinishing()) {
+                            return;
+                        }
+                        if (reservation.idPrenotazione == null
+                                || reservation.idAttivita == null) {
+                            bookingAction.setEnabled(true);
+                            Toast.makeText(MainActivity.this,
+                                    "Risposta di prenotazione non valida.", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        userBookings.removeIf(entry ->
+                                entry.reservation.idAttivita.equals(reservation.idAttivita));
+                        userBookings.add(new BookingEntry(activity, reservation));
+                        bookingAction.setEnabled(true);
+                        Toast.makeText(MainActivity.this, "Prenotazione confermata.",
+                                Toast.LENGTH_SHORT).show();
+                        navigate("bookings");
+                    }
+
+                    @Override
+                    public void onFailure(String message, boolean sessionExpired) {
+                        bookingInProgress = false;
+                        if (isFinishing()) {
+                            return;
+                        }
+                        if (sessionExpired) {
+                            handleActivityFailure(message, true);
+                            return;
+                        }
+                        bookingAction.setEnabled(true);
+                        Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    private TextView addPair(LinearLayout row, String label, String value) {
         LinearLayout pair = this.column();
         pair.addView((View)this.text(label, 13, INK, true), (ViewGroup.LayoutParams)this.lp(-1, 24));
         pair.addView((View)this.valueBox(value, 42), (ViewGroup.LayoutParams)this.lp(-1, 42));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -1, 1.0f);
         params.rightMargin = this.dp(10.0f);
         row.addView((View)pair, (ViewGroup.LayoutParams)params);
+        return (TextView)pair.getChildAt(1);
     }
 
     private View bookingsPage() {
         LinearLayout body = this.column();
         body.addView((View)this.title("Prenotazioni"), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        for (int i = 0; i < 3; ++i) {
-            this.addBookingCard(body, i);
+        if (userBookings.isEmpty()) {
+            body.addView((View)this.text("Nessuna prenotazione caricata in questa sessione.",
+                    14, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, 52));
+            return this.scroll(body, 22);
+        }
+        for (BookingEntry booking : new ArrayList<>(userBookings)) {
+            this.addBookingCard(body, booking);
         }
         return this.scroll(body, 22);
     }
 
-    private void addBookingCard(LinearLayout parent, int index) {
-        String[] names = new String[]{"CERAMICA PER TUTTI", "RECITAZIONE", "TREKKING"};
-        String[] dates = new String[]{"il 10/11/2026 ore 10:30", "il 10/04/2026 ore 19:00", "il 15/05/2026 ore 08:00"};
-        String[] places = new String[]{"Vietri sul Mare, via Vittorio II, 84019", "Nocera Inferiore, via Canale, 84014", "Cava de' Tirreni, Monte Castello, 84013"};
-        String[] durations = new String[]{"2 ore", "5 ore", "3 ore"};
+    private void addBookingCard(LinearLayout parent, BookingEntry booking) {
+        ActivitySummary activity = booking.activity;
+        ReservationResponse reservation = booking.reservation;
         LinearLayout card = this.column();
         card.setPadding(this.dp(12.0f), this.dp(12.0f), this.dp(12.0f), this.dp(12.0f));
         card.setBackground((Drawable)this.shape(-1, BORDER, 12.0f));
         card.setElevation((float)this.dp(3.0f));
         LinearLayout upper = this.row();
         upper.setGravity(48);
-        upper.addView((View)this.activityPhoto(index), (ViewGroup.LayoutParams)this.lp(92, 80));
+        upper.addView((View)this.activityPhoto(Math.floorMod(
+                reservation.idAttivita.intValue(), 3)), (ViewGroup.LayoutParams)this.lp(92, 80));
         LinearLayout details = this.column();
         details.setPadding(this.dp(12.0f), 0, 0, 0);
-        details.addView((View)this.text(names[index], 14, INK, true), (ViewGroup.LayoutParams)this.lp(-1, 30));
-        details.addView((View)this.text(dates[index], 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        details.addView((View)this.text(places[index], 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        details.addView((View)this.text("durata: " + durations[index], 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
-        details.addView((View)this.text("numero max di partecipanti: " + (index == 0 ? "10" : (index == 1 ? "20" : "15")), 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
+        String title = activity == null || activity.titolo == null ? "" : activity.titolo;
+        String dateTime = activity == null ? "" : formatActivityDate(activity.data, activity.ora);
+        String location = activity == null || activity.luogo == null
+                ? "" : activity.luogo.citta;
+        details.addView((View)this.text(title, 14, INK, true), (ViewGroup.LayoutParams)this.lp(-1, 30));
+        details.addView((View)this.text(dateTime, 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
+        details.addView((View)this.text(location, 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
+        details.addView((View)this.text("Stato: " + reservation.stato, 12, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, -2));
         upper.addView((View)details, (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, -2, 1.0f));
         card.addView((View)upper, (ViewGroup.LayoutParams)this.lp(-1, -2));
         LinearLayout buttons = this.row();
-        TextView remove = this.dangerAction("ELIMINA", () -> this.confirm("Vuoi annullare la prenotazione?", () -> Toast.makeText((Context)this, (CharSequence)"Prenotazione annullata", (int)0).show()));
-        TextView group = this.softAction("GRUPPO", () -> this.navigate("participants"));
+        TextView remove = this.dangerAction("ELIMINA", () ->
+                this.confirm("Vuoi annullare la prenotazione?",
+                        () -> cancelBooking(booking)));
+        TextView group = this.softAction("GRUPPO", () -> loadBookingParticipants(booking));
         buttons.addView((View)remove, (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(42.0f), 1.0f));
         LinearLayout.LayoutParams groupParams = new LinearLayout.LayoutParams(0, this.dp(42.0f), 1.0f);
         groupParams.leftMargin = this.dp(10.0f);
@@ -823,6 +1444,55 @@ extends Activity {
         LinearLayout.LayoutParams cardParams = this.lp(-1, -2);
         cardParams.bottomMargin = this.dp(15.0f);
         parent.addView((View)card, (ViewGroup.LayoutParams)cardParams);
+    }
+
+    private void cancelBooking(BookingEntry booking) {
+        activityRepository.cancelReservation(booking.reservation.idPrenotazione,
+                new ActivityRepository.ReservationCallback() {
+                    @Override
+                    public void onSuccess(ReservationResponse response) {
+                        if (isFinishing()) {
+                            return;
+                        }
+                        userBookings.remove(booking);
+                        if (selectedBooking == booking) {
+                            selectedBooking = null;
+                            reservationParticipants = null;
+                        }
+                        openApp("bookings", false);
+                        Toast.makeText(MainActivity.this, "Prenotazione annullata.",
+                                Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onFailure(String message, boolean sessionExpired) {
+                        if (!isFinishing()) {
+                            handleActivityFailure(message, sessionExpired);
+                        }
+                    }
+                });
+    }
+
+    private void loadBookingParticipants(BookingEntry booking) {
+        activityRepository.getReservationParticipants(booking.reservation.idAttivita,
+                new ActivityRepository.ParticipantsCallback() {
+                    @Override
+                    public void onSuccess(ReservationParticipantsResponse participants) {
+                        if (isFinishing()) {
+                            return;
+                        }
+                        selectedBooking = booking;
+                        reservationParticipants = participants;
+                        navigate("participants");
+                    }
+
+                    @Override
+                    public void onFailure(String message, boolean sessionExpired) {
+                        if (!isFinishing()) {
+                            handleActivityFailure(message, sessionExpired);
+                        }
+                    }
+                });
     }
 
     private View participantsPage() {
@@ -837,15 +1507,23 @@ extends Activity {
         header.addView((View)this.tableCell("TELEFONO", 1.0f, true), (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(54.0f), 1.4f));
         header.addView((View)this.tableCell("GRADO DI\nAFFIDABILIT\u00c0", 1.0f, true), (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(54.0f), 1.2f));
         table.addView((View)header);
-        String[][] people = new String[][]{{"Marco", "3457765231", "8"}, {"Luca", "3986431267", "10"}, {"Carlotta", "3326541234", "6"}, {"Gaia", "3234435609", "8"}, {"Giovanni", "3314527656", "7"}, {"Sonia", "3457765231", "8"}, {"Carlo", "3986431267", "10"}, {"Fabio", "3326541234", "6"}, {"Stefano", "3234435609", "8"}};
-        for (int i = 0; i < people.length; ++i) {
+        List<ReservationParticipantsResponse.Participant> people =
+                reservationParticipants == null || reservationParticipants.partecipanti == null
+                        ? Collections.emptyList() : reservationParticipants.partecipanti;
+        for (int i = 0; i < people.size(); ++i) {
+            ReservationParticipantsResponse.Participant participant = people.get(i);
             LinearLayout person = this.row();
             person.setBackgroundColor(i % 2 == 0 ? -1 : FIELD);
-            person.addView((View)this.tableCell(people[i][0], 1.0f, false), (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(48.0f), 1.0f));
-            person.addView((View)this.tableCell(people[i][1], 1.4f, false), (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(48.0f), 1.4f));
-            person.addView((View)this.tableCell(people[i][2], 1.2f, false), (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(48.0f), 1.2f));
-            person.setOnClickListener(view -> this.navigate("report"));
+            String name = ((participant.nome == null ? "" : participant.nome) + " "
+                    + (participant.cognome == null ? "" : participant.cognome)).trim();
+            person.addView((View)this.tableCell(name, 1.0f, false), (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(48.0f), 1.0f));
+            person.addView((View)this.tableCell("—", 1.4f, false), (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(48.0f), 1.4f));
+            person.addView((View)this.tableCell("—", 1.2f, false), (ViewGroup.LayoutParams)new LinearLayout.LayoutParams(0, this.dp(48.0f), 1.2f));
             table.addView((View)person);
+        }
+        if (people.isEmpty()) {
+            table.addView((View)this.text("Nessun altro partecipante attivo.",
+                    14, MUTED, false), (ViewGroup.LayoutParams)this.lp(-1, 48));
         }
         body.addView((View)table, (ViewGroup.LayoutParams)this.lp(-1, -2));
         TextView report = this.dangerAction("SEGNALA CLIENTE", () -> this.navigate("report"));
@@ -873,25 +1551,63 @@ extends Activity {
         avatarParams.gravity = 1;
         avatarParams.bottomMargin = this.dp(14.0f);
         body.addView((View)avatar, (ViewGroup.LayoutParams)avatarParams);
-        body.addView((View)this.labeledValue("NUMERO", "352 856 1235", 44), (ViewGroup.LayoutParams)this.lp(-1, 70));
-        LinearLayout surname = this.labeledValue("COGNOME", "DE FILIPPO", 42);
+        LinearLayout phone = this.labeledValue("NUMERO", "Caricamento...", 44);
+        this.profilePhone = (TextView)phone.getChildAt(1);
+        body.addView((View)phone, (ViewGroup.LayoutParams)this.lp(-1, 70));
+        LinearLayout surname = this.labeledValue("COGNOME", "Caricamento...", 42);
+        this.profileSurname = (TextView)surname.getChildAt(1);
         LinearLayout.LayoutParams surnameParams = this.lp(-1, 70);
         surnameParams.topMargin = this.dp(8.0f);
         body.addView((View)surname, (ViewGroup.LayoutParams)surnameParams);
-        LinearLayout nameRow = this.labeledValue("NOME", "MARCO", 42);
+        LinearLayout nameRow = this.labeledValue("NOME", "Caricamento...", 42);
+        this.profileName = (TextView)nameRow.getChildAt(1);
         LinearLayout.LayoutParams nameParams = this.lp(-1, 70);
         nameParams.topMargin = this.dp(8.0f);
         body.addView((View)nameRow, (ViewGroup.LayoutParams)nameParams);
-        LinearLayout emailRow = this.labeledValue("E-MAIL", "marco@gmail.com", 44);
+        LinearLayout emailRow = this.labeledValue("E-MAIL", "Caricamento...", 44);
+        this.profileEmail = (TextView)emailRow.getChildAt(1);
         LinearLayout.LayoutParams emailParams = this.lp(-1, 70);
         emailParams.topMargin = this.dp(8.0f);
         body.addView((View)emailRow, (ViewGroup.LayoutParams)emailParams);
         this.addProfileAction(body, "GESTIONE ATTIVIT\u00c0", PALE, TEAL, () -> this.navigate("organizer"));
         this.addProfileAction(body, "MODIFICA PROFILO", PALE, TEAL, () -> this.navigate("profile-edit"));
-        this.addProfileAction(body, "ELIMINA PROFILO", -1, RED, () -> this.confirm("Eliminare il profilo?", this::showLogin));
-        this.addProfileAction(body, "LOGOUT", -1, MUTED, this::showLogin);
+        this.addProfileAction(body, "ELIMINA PROFILO", -1, RED,
+                () -> this.confirm("Eliminare il profilo?", this::deleteProfile));
+        this.addProfileAction(body, "LOGOUT", -1, MUTED, this::logout);
         this.addProfileAction(body, "RICHIESTA ORGANIZZATORE", PALE, TEAL, () -> this.navigate("organizer-request"));
+        this.loadCurrentProfile();
         return this.scroll(body, 22);
+    }
+
+    private void loadCurrentProfile() {
+        this.authRepository.getCurrentProfile(new AuthRepository.ResultCallback<UserProfile>() {
+            @Override
+            public void onSuccess(UserProfile profile) {
+                if (isFinishing() || !currentScreen.equals("profile")) {
+                    return;
+                }
+                currentProfile = profile;
+                profileName.setText(profile.nome == null ? "" : profile.nome);
+                profileSurname.setText(profile.cognome == null ? "" : profile.cognome);
+                profileEmail.setText(profile.email == null ? "" : profile.email);
+                profilePhone.setText(profile.telefono == null ? "" : profile.telefono);
+            }
+
+            @Override
+            public void onFailure(String message, boolean sessionExpired) {
+                if (isFinishing()) {
+                    return;
+                }
+                if (sessionExpired) {
+                    currentUser = null;
+                    currentProfile = null;
+                    userBookings.clear();
+                    history.clear();
+                    showLogin();
+                }
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void addProfileAction(LinearLayout body, String label, int fill, int color, Runnable run) {
@@ -899,6 +1615,34 @@ extends Activity {
         LinearLayout.LayoutParams params = this.lp(-1, 50);
         params.topMargin = this.dp(8.0f);
         body.addView((View)action, (ViewGroup.LayoutParams)params);
+    }
+
+    private void deleteProfile() {
+        authRepository.deleteCurrentProfile(new AuthRepository.ResultCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                currentUser = null;
+                currentProfile = null;
+                userBookings.clear();
+                selectedBooking = null;
+                reservationParticipants = null;
+                history.clear();
+                showLogin();
+                Toast.makeText(MainActivity.this, "Profilo eliminato.",
+                        Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFailure(String message, boolean sessionExpired) {
+                if (!isFinishing()) {
+                    if (sessionExpired) {
+                        handleActivityFailure(message, true);
+                    } else {
+                        Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
+        });
     }
 
     private View profileEditPage() {
@@ -910,13 +1654,53 @@ extends Activity {
         avatarParams.gravity = 1;
         avatarParams.bottomMargin = this.dp(12.0f);
         body.addView((View)avatar, (ViewGroup.LayoutParams)avatarParams);
-        this.addField(body, "Nome", "Marco", 1, 44, 8);
-        this.addField(body, "Cognome", "De Filippo", 1, 44, 12);
-        this.addField(body, "E-mail", "marco@gmail.com", 32, 44, 12);
-        this.addField(body, "Telefono", "352 856 1235", 3, 44, 12);
-        TextView save = this.primaryAction("CONFERMA", () -> {
-            Toast.makeText((Context)this, (CharSequence)"Profilo aggiornato", (int)0).show();
-            this.openApp("profile", false);
+        EditText name = this.addField(body, "Nome", "", 1, 44, 8);
+        EditText surname = this.addField(body, "Cognome", "", 1, 44, 12);
+        EditText email = this.addField(body, "E-mail", "", 32, 44, 12);
+        EditText phone = this.addField(body, "Telefono", "", 3, 44, 12);
+        if (currentProfile != null) {
+            name.setText(currentProfile.nome == null ? "" : currentProfile.nome);
+            surname.setText(currentProfile.cognome == null ? "" : currentProfile.cognome);
+            email.setText(currentProfile.email == null ? "" : currentProfile.email);
+            phone.setText(currentProfile.telefono == null ? "" : currentProfile.telefono);
+        }
+        TextView save = this.primaryAction("CONFERMA", () -> { });
+        save.setOnClickListener(view -> {
+            String updatedName = name.getText().toString().trim();
+            String updatedSurname = surname.getText().toString().trim();
+            String updatedEmail = email.getText().toString().trim();
+            String updatedPhone = phone.getText().toString().trim();
+            if (updatedName.isEmpty() || updatedSurname.isEmpty()
+                    || updatedEmail.isEmpty() || updatedPhone.isEmpty()) {
+                Toast.makeText(MainActivity.this, "Compila tutti i campi.",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            save.setEnabled(false);
+            authRepository.updateCurrentProfile(
+                    new ProfileUpdateRequest(updatedName, updatedSurname, updatedEmail, updatedPhone),
+                    new AuthRepository.ResultCallback<UserProfile>() {
+                        @Override
+                        public void onSuccess(UserProfile profile) {
+                            currentProfile = profile;
+                            openApp("profile", false);
+                            Toast.makeText(MainActivity.this, "Profilo aggiornato.",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onFailure(String message, boolean sessionExpired) {
+                            if (isFinishing()) {
+                                return;
+                            }
+                            if (sessionExpired) {
+                                handleActivityFailure(message, true);
+                            } else {
+                                save.setEnabled(true);
+                                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    });
         });
         LinearLayout.LayoutParams saveParams = this.lp(-1, 54);
         saveParams.topMargin = this.dp(20.0f);
@@ -1102,7 +1886,7 @@ extends Activity {
         LinearLayout.LayoutParams reportsParams = this.lp(-1, 54);
         reportsParams.topMargin = this.dp(12.0f);
         body.addView((View)reports, (ViewGroup.LayoutParams)reportsParams);
-        TextView logout = this.action("LOGOUT", WHITE, MUTED, BORDER, this::showLogin);
+        TextView logout = this.action("LOGOUT", WHITE, MUTED, BORDER, this::logout);
         LinearLayout.LayoutParams logoutParams = this.lp(-1, 50);
         logoutParams.topMargin = this.dp(12.0f);
         body.addView((View)logout, (ViewGroup.LayoutParams)logoutParams);
