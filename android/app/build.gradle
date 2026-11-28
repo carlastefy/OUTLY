@@ -1,0 +1,27 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "it.unisa.outly"
+    compileSdk 37
+
+    defaultConfig {
+        applicationId "it.unisa.outly"
+        minSdk 24
+        targetSdk 37
+        versionCode 1
+        versionName "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.squareup.retrofit2:retrofit:2.11.0"
+    implementation "com.squareup.retrofit2:converter-gson:2.11.0"
+    implementation "com.squareup.okhttp3:okhttp:4.12.0"
+}
